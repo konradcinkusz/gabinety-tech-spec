@@ -114,3 +114,59 @@ Rules:
 Before the next phase starts the supervisor compares what the documents claim with what can be measured now
 (the `session-status` skill), corrects `PROGRESS.md` and the README in one pull request, and lists the gaps as new tasks.
 No new feature work starts while a gate that was due is neither claimed with proof nor reported as failed with evidence.
+
+## 10. Implementers on Claude Haiku 5.5 (this project)
+
+DECISIONS D-14 puts the implementers on `claude-haiku-5-5`. A fast, small model does well on a narrow, explicit task and badly on
+an open one, so the protocol adds these rules to §3 to §7. They override nothing; they make the brief stricter.
+
+1. **Everything the task needs is in the brief or in a file it names.** The brief quotes the whole task block, the contract
+   excerpts it needs (copied from `CONTRACTS.md`, not summarised), and the exact test vectors. An implementer is never told
+   "see the spec" for a number.
+2. **Smaller tasks.** Aim for about 300 changed lines. A task that grows past 400 is split by the implementer, who stops and
+   reports the split in the PR description; the supervisor writes the new task ids.
+3. **Tests first, shown failing.** The brief asks for the Accept tests to be written first, run to see them fail for the right
+   reason, then the code. The PR description pastes the first failing run's one-line summary.
+4. **Port, do not invent.** Where a task names a reference (the chess project's `Chess.Llm`, an authservice endpoint, a guide), the
+   implementer attaches or reads it and copies the shape. A new abstraction not named in the task is a finding.
+5. **One revision round, then the supervisor decides.** After one review round with findings, if the PR is still wrong the
+   supervisor either rewrites the brief with the missing facts and starts a **new** implementer session on the same branch, or
+   takes the task over. It does not keep a session in a loop of small corrections.
+6. **The supervisor verifies, it does not trust the report.** It re-runs the Verify command (or reads its CI run), reads the
+   test bodies for the "can this fail" bar (§7), and greps the diff for the guards in SPEC §5 (clock, logging of free text, SDK
+   namespace, package versions in a `.csproj`). A claim without a link is not a claim.
+7. **Stop conditions the brief states:** a contradiction between SPEC, CONTRACTS and the task; a needed change outside `Files:`;
+   an unknown behaviour of a real dependency; any wish to change a constant of CONTRACTS §9. The implementer stops and writes
+   "Blocked: question for supervisor". It does not choose.
+8. **Constants and formulas are the owner's.** An implementer who finds a number that seems wrong reports it; it never adjusts it.
+9. **Language of the brief:** English. User-facing Polish text goes through `pl.ts` and the template files only.
+
+## 11. Starting and tracking sub-sessions
+
+How D-15 is carried out with the `claude-code-remote` tools (the director has them in its session; if a tool is not listed,
+load it with ToolSearch):
+
+- **Start:** `create_session` with `model: "claude-haiku-5-5"`, `source_url` of this repository, `source_revision` the latest
+  default branch, `title` `<task id> <title>`, `outcome_branch` `task/<id>-<slug>` unless the environment prescribes a branch
+  pattern (then use it and note the mapping in `PROGRESS.md` Notes), and `prompt` the brief of §5 plus §10. Pass `effort` only if the owner asked.
+- **Track:** `list_sessions` and `get_session` (`status_bucket`: working, blocked, review_ready, completed, failed) and
+  `list_events` with `kinds: ["assistant","result"]` to read what it did. Do not poll in a loop: when nothing else remains, end
+  the turn and let events wake you (PR events through `subscribe_pr_activity`).
+- **Talk:** `send_message` for an answer to a "Blocked: question for supervisor"; `interrupt_session` for a session that has
+  gone off the task.
+- **A session can stop mid-task** (a usage limit, a restart). Before resuming or replacing it, read its branch, its pull request
+  and its working tree, and continue from what was pushed. Never restart the task from the default branch: that is how work is
+  duplicated (a lesson of the chess project).
+- **Finish:** after the merge and the `PROGRESS.md` update, `archive_session` (D-17 allows it).
+- **In-process agents** (the Agent tool) are for read-only research only: reading the standards, the chess project or authservice
+  and returning a summary the supervisor then checks.
+- **Branch names and PRs:** one branch and one PR per task. The PR is opened ready for review, with the pull request template of the repository.
+
+## 12. The director's first hour
+
+1. Read `README.md`, `AGENTS.md`, `DECISIONS.md`, then `SPEC.md`, `CONTRACTS.md`, `COPILOT-SDK.md`, `TASKS.md`, `PROGRESS.md`.
+2. Run `scripts/check-spec.sh && scripts/check-open-markers.sh` and report the output.
+3. Verify that the standards are readable (the plugins of `.claude/settings.json`; otherwise attach `architecture-standards` read-only).
+4. Ask the owner the open rows of `DECISIONS.md` in **one** message (§2), and which model the director itself runs on (D-14).
+5. Only then start T-00.02, T-01.01 and T-01.02, within D-16.
+
