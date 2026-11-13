@@ -104,7 +104,7 @@ flowchart LR
 
 | Thing | Name |
 |---|---|
-| Repository | `gabinety-tech-spec` (DECISIONS D-01, ADR-0006) |
+| Repositories | spec: `gabinety-tech-spec`; code: `gabinety-tech` (DECISIONS D-01, ADR-0009) |
 | Solution | `GabinetyTech.sln` |
 | AppHost / ServiceDefaults | `Gabinety.AppHost` / `Gabinety.ServiceDefaults` |
 | Image prefix | `ghcr.io/konradcinkusz/gabinety-` (`-directory`, `-booking`, `-reputation`, `-assistant`, `-web`) |

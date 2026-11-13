@@ -1,6 +1,6 @@
 # ADR-0006: the specification and the code live in one repository
 
-- Status: accepted
+- Status: superseded by ADR-0009
 - Date: 2026-11-12
 
 ## Context
