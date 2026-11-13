@@ -12,7 +12,7 @@ Rules, checked by `scripts/check-spec.sh` where a script can check them:
 
 | Task | Status | Evidence (PR or run link) | Measured | Notes |
 |---|---|---|---|---|
-| T-00.01 | not-started | | | Owner decisions recorded |
+| T-00.01 | merged | https://github.com/konradcinkusz/gabinety-tech-spec/pull/2 (check `spec` green, run 43439862658) | 2026-11-13 | Owner decisions recorded; defaults accepted by owner; ADR-0009 splits repos |
 | T-00.02 | not-started | | | Repository settings |
 | T-00.03 | not-started | | | Scaffold and empty pipeline green |
 | T-00.04 | not-started | | | First vertical slice against the real thing |
@@ -108,8 +108,8 @@ platform; a run against the real dependency). This list is part of every status 
 
 ## Owner actions outstanding
 
-- T-00.01: confirm the (proposed) rows of `DECISIONS.md`, state the dates of D-08 and the N of M2.
-- T-00.02: repository settings (default branch, branch protection, secret scanning, GHCR).
+- D-08 dates and D-26 provider: state by 2026-12-31 (decision log). N of M2 = 4 weeks is a default.
+- T-00.02 (blocks everything after it): on BOTH repos set default branch `main`, auto-delete head branches, branch protection per D-13, secret scanning and push protection, GHCR. I cannot read or set these.
 - T-09.01: Fly.io organisation and token, payment provider account (sandbox), e-mail provider, bring-your-own-key model account, GitHub OAuth app, domain.
 - T-02.06: a machine with a GitHub Copilot login for the live smoke run; read the current Copilot terms (A-04).
 - T-10.02: a lawyer and an accountant for the legal texts and A-06, A-07, A-13.
