@@ -14,7 +14,7 @@ Rules, checked by `scripts/check-spec.sh` where a script can check them:
 |---|---|---|---|---|
 | T-00.01 | merged | https://github.com/konradcinkusz/gabinety-tech-spec/pull/2 (check `spec` green, run 43439862658) | 2026-11-13 | Owner decisions recorded; defaults accepted by owner; ADR-0009 splits repos |
 | T-00.02 | not-started | | | Repository settings |
-| T-00.03 | in-flight | Part 1: https://github.com/konradcinkusz/gabinety-tech/pull/1 (merged). Part 2: https://github.com/konradcinkusz/gabinety-tech/pull/2 (merged); CI run https://github.com/konradcinkusz/gabinety-tech/actions/runs/43889082532 (`build-test`, `web`, `e2e` success; `secret-scan` run 43889082690 success) | 2026-11-16 | Parts 1 and 2 of 3 merged: shells, kernel (health, features), AppHost fake profile, Next.js shell. Open: telemetry/JWT/internal-key/rate-limit/origin guard in the kernel, `docker-build`, `integration`, CI.md, three consecutive green runs on one commit. Started before T-00.02 on the owner's instruction (2026-11-16) |
+| T-00.03 | merged | PRs https://github.com/konradcinkusz/gabinety-tech/pull/1, /pull/2, /pull/3, /pull/4. Three green runs of `ci` on commit 5645ebb: https://github.com/konradcinkusz/gabinety-tech/actions/runs/43908188697 (attempts 1-3); `secret-scan` https://github.com/konradcinkusz/gabinety-tech/actions/runs/43908188672 (attempts 1-3) | 2026-11-16 | Shells, kernel (telemetry, JWT, internal key, rate limit, origin guard, health, features), AppHost fake profile, Next.js shell, jobs build-test/web/integration/e2e/secret-scan, `docs/operations/CI.md`. Started before T-00.02 on the owner's instruction. Caveats: Copilot runtime bundle download (A-12) not measured; `RUNNER_LABELS` switch never exercised with a variable set; `e2e` job checks only `/health` per service
 | T-00.04 | not-started | | | First vertical slice against the real thing |
 | T-01.01 | not-started | | | Spike: the authservice integration surface |
 | T-01.02 | not-started | | | Spike: the Copilot SDK in this solution |
@@ -104,13 +104,15 @@ platform; a run against the real dependency). This list is part of every status 
 - All behaviour: the code is shells with health endpoints. No feature exists. Decisions were recorded 2026-11-13 (defaults); a lawyer has not seen them.
 - The Copilot SDK behaviours of COPILOT-SDK §9 (A-04, A-05, A-08 to A-12): carried over from the chess project's documents, never run against a real login here.
 - authservice's claim names, endpoints and image (A-01, A-02): taken from its README, not yet read from source or run (T-01.01).
-- Three consecutive green runs of the pipeline on one commit (T-00.03): one green run exists (2026-11-16), not three.
+- Pipeline stability over time: three green runs of one commit on one day (2026-11-16) are shown; a longer history is not.
 - The default profile (PostgreSQL and authservice in Docker) has not been run; the fake profile was run locally and in CI (`e2e` job) with only a `/health` check per service.
+- The booking exclusion constraint exists only as a test on PostgreSQL 17; CONTRACTS 4.1 as written fails on PostgreSQL (spec PR #6 waits for the owner).
 
 ## Owner actions outstanding
 
 - D-08 dates and D-26 provider: state by 2026-12-31 (decision log). N of M2 = 4 weeks is a default.
-- T-00.02 (blocks everything after it): on BOTH repos set default branch `main`, auto-delete head branches, branch protection per D-13, secret scanning and push protection, GHCR. I cannot read or set these.
+- Approve or reject spec PR https://github.com/konradcinkusz/gabinety-tech-spec/pull/6 (CONTRACTS 4.1 constraint expression); T-04.04 is blocked on it.
+- T-00.02 (no longer blocks the scaffold, which is merged, but protects `main`): on BOTH repos set default branch `main`, auto-delete head branches, branch protection per D-13, secret scanning and push protection, GHCR. I cannot read or set these.
 - T-09.01: Fly.io organisation and token, payment provider account (sandbox), e-mail provider, bring-your-own-key model account, GitHub OAuth app, domain.
 - T-02.06: a machine with a GitHub Copilot login for the live smoke run; read the current Copilot terms (A-04).
 - T-10.02: a lawyer and an accountant for the legal texts and A-06, A-07, A-13.
