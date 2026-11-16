@@ -11,7 +11,7 @@ end-to-end journeys must run in it. authservice needs PostgreSQL or SQL Server, 
 `tools/Gabinety.DevIdentity` is a small ASP.NET Core app that exposes the subset of the authservice HTTP surface the web app
 uses (register, login, refresh, logout, me, JWKS, OIDC discovery) and issues RS256 tokens from an in-memory user list seeded
 with synthetic users. Rules:
-- it lives under `tools/`, is referenced by no project under `src/`, and is in no Dockerfile (architecture test);
+- it lives under `tools/`, is referenced by no project under `src/` except `Gabinety.AppHost`, which orchestrates it in the fake profile (a composition-root reference, no code dependency; one documented exception in the architecture test), and is in no Dockerfile (architecture test);
 - it refuses to start unless `GABINETY_FAKE=1`;
 - the real surface is proven separately: CI starts the real authservice image and runs the same auth contract tests against it
   (T-00.04, T-03.01), so the stand-in cannot drift unnoticed.
