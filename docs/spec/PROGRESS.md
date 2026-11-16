@@ -27,8 +27,8 @@ Rules, checked by `scripts/check-spec.sh` where a script can check them:
 | T-02.05 | not-started | | | Live smoke command for the Assistant |
 | T-02.06 | not-started | | | Live smoke run of the gateway |
 | T-03.01 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/22 (CI green on c62fcdd: all 5 jobs; `integration` ran `SkeletonMigrationIntegrationTests.Migration_runs_once_and_a_second_start_is_a_no_op` on PostgreSQL 17, passed in 9 s); main green on a77d0c6 | 2026-11-16 | Directory skeleton: DbContext with provider switch, migration hosted service after ApplicationStarted, empty baseline migration, policies Authenticated/Admin/Internal, OpenAPI at /openapi/v1.json, /health/details listing `database` and `identity`; Program.cs 27 lines. Findings: MSB3277 on EF Relational 10.0.4 vs 10.0.15 fixed by pinning (code PR #23); the kernel's /health lists no check names, so /health/details exists. Not shown: `/health/details` is unauthenticated and reveals only Healthy/Degraded names |
-| T-03.02 | not-started | | | Directory: practitioner profile |
-| T-03.03 | not-started | | | Directory: taxonomy and its seed |
+| T-03.02 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/25 (CI green on 3a1daf0, all 5 jobs; `integration` ran the slug-collision test on PostgreSQL 17); follow-up https://github.com/konradcinkusz/gabinety-tech/pull/27 | 2026-11-16 | Directory: practitioner profile, NIP, contact detector, slug, state machine. CI first failed because the T-03.01 migration test expected one history row; the director made it compare against every declared migration (stronger, deterministic order). Review found the phone rule flagged year ranges such as "2015-2023"; fixed in #27 (tests first). `GET` and `submit` call authservice `/auth/me` for `emailConfirmed` with a 5 s budget (the access token has no `email_verified`). Not shown: detector false positives beyond year ranges; the identity lookup against the real authservice |
+| T-03.03 | in-flight | session_01RjKhVNPWy1FiDBEg4W7fhW (claude-sonnet-5-5, effort medium), branch task/T-03.03-taxonomy | 2026-11-16 | Directory: taxonomy and its seed |
 | T-03.04 | not-started | | | Directory: offerings |
 | T-03.05 | not-started | | | Directory: verification workflow |
 | T-03.06 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/14 (CI green: all 5 jobs) | 2026-11-16 | Ranking library, done by the director (all 3 session slots were in use). 14 tests: the three CONTRACTS 9.3 vectors within 0.005, monotonicity grids, bounds, ties, display rule; 4 mutations each failed a test. Not used by any service yet |
@@ -36,15 +36,15 @@ Rules, checked by `scripts/check-spec.sh` where a script can check them:
 | T-03.08 | not-started | | | Directory: internal endpoints |
 | T-04.01 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/16 (CI green: all 5 jobs) | 2026-11-16 | Billing library: Money, Fees, RefundPolicy, BookingStateMachine; 36 tests. A mutation (+5000 to +4999) showed the CONTRACTS 9.1 vectors do not pin the half-up tie; a test derived from the formula was added (10 -> fee 2). Follow-up: `Gabinety.Billing.BookingStatus` and `Gabinety.Contracts.Booking.BookingStatus` are two enums with the same members; the Booking service (T-04.03+) needs a mapping test |
 | T-04.02 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/15 (CI green: all 5 jobs) | 2026-11-16 | Scheduling library: SlotGenerator; 10 tests incl. both DST vectors, 12 h and 60 day boundaries, buffer, exception, d=60, property over 200 seeded cases. Limit: rules use TimeOnly, so an end of 24:00 cannot be expressed (an availability window may end at 23:30 at the latest); T-04.03 validation must say so |
-| T-04.03 | not-started | | | Booking: skeleton and availability |
-| T-04.04 | not-started | | | Booking: slot listing and the no-double-booking constraint |
+| T-04.03 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/28 (CI green: all 5 jobs; `integration` ran 3 Booking tests on PostgreSQL 17) | 2026-11-16 | Booking skeleton, availability API, `DirectoryClient` (3 s, one retry on GET), `directory` health check; 48 Booking tests; 4 mutations. Known: a midnight end is not expressible; concurrent PUTs of the same new exception date can return 500; DirectoryClient bypasses the kernel's retry pipeline while Directory's e-mail lookup removes it: two ways to the same end, to be unified in the kernel |
+| T-04.04 | in-flight | session_01RjKhVN6ER4CCHBz5EVW4ea (claude-sonnet-5-5, effort medium), branch task/T-04.04-slots-constraint | 2026-11-16 | Booking: slots and the no-double-booking constraint (tests under Booking.Tests, not Integration.Tests: two global `Program` types) |
 | T-04.05 | not-started | | | Booking: creation, hold and the payment abstraction |
 | T-04.06 | not-started | | | Booking: webhook, simulate and confirmation |
 | T-04.07 | not-started | | | Booking: cancellation, dispute, no-show and resolution |
 | T-04.08 | not-started | | | Booking: jobs, fee, payout and ledger export |
 | T-04.09 | not-started | | | Booking: notifications |
 | T-04.10 | not-started | | | Booking: stats push, reviewability, erasure, test clock |
-| T-05.01 | not-started | | | Reputation: skeleton, entities and deterministic rules |
+| T-05.01 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/26 (CI green: all 5 jobs; `integration` ran the Reputation migration test, 12 s) | 2026-11-16 | Reputation skeleton, three tables, the five deterministic rules and `PublicationDecider`; 68 Reputation tests; 3 mutations each failed a test. Rules read text with control and zero-width characters removed (cannot be evaded by them); a URL with user-info trick is handled. A false positive only holds a review for moderation |
 | T-05.02 | not-started | | | Reputation: create, list, reply and rating summaries |
 | T-05.03 | not-started | | | Reputation: moderation |
 | T-05.04 | not-started | | | Reputation: triage, summary push, erasure, test clock |
@@ -53,7 +53,7 @@ Rules, checked by `scripts/check-spec.sh` where a script can check them:
 | T-06.03 | not-started | | | Assistant: the review triage feature |
 | T-06.04 | not-started | | | Evaluation suite for the two prompts |
 | T-06.05 | not-started | | | Live evaluation run |
-| T-07.01 | not-started | | | Web: BFF, session and generated types |
+| T-07.01 | in-flight | session_01RjKhVLKDTJWj6ypoP1EPU1 (claude-sonnet-5-5, effort medium), branch task/T-07.01-web-bff | 2026-11-16 | Web: BFF, session and generated types |
 | T-07.02 | not-started | | | Web: design tokens, layout, UI primitives, Polish strings |
 | T-07.03 | not-started | | | Web: public category and list pages with SEO |
 | T-07.04 | not-started | | | Web: public practitioner page |
