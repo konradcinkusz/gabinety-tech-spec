@@ -149,7 +149,8 @@ GIN on `offerings(tech_slugs)` (PostgreSQL). A query that filters then projects 
 | `notifications` | `id` · `booking_id` · `kind` `BookingConfirmed\|Reminder24h\|Reminder1h\|Cancelled\|ReviewRequest\|DisputeOpened\|DisputeResolved\|PayoutSent` · `to_user_id` · `due_at` ts · `sent_at`? · `attempts` int. Unique `(booking_id, kind, to_user_id)` |
 
 **No double booking.** PostgreSQL: an exclusion constraint
-`EXCLUDE USING gist (practitioner_id WITH =, tstzrange(start_utc, end_utc + interval '15 minutes') WITH &&) WHERE (status IN ('PendingPayment','Confirmed','Disputed'))`
+`EXCLUDE USING gist (practitioner_id WITH =, tsrange(start_utc AT TIME ZONE 'UTC', (end_utc AT TIME ZONE 'UTC') + interval '15 minutes') WITH &&) WHERE (status IN ('PendingPayment','Confirmed','Disputed'))`
+(the UTC wall-clock form is required: `timestamptz + interval` is `STABLE`, and PostgreSQL rejects it in an index expression with `42P17: functions in index expression must be marked IMMUTABLE`, measured by the `integration` job on 2026-11-16; `AT TIME ZONE 'UTC'` with a constant zone is immutable and gives the same ranges)
 (extension `btree_gist`), in a provider-specific migration. The application also serialises creation per practitioner (an advisory lock) and maps the constraint
 violation to `409 slot_taken`. The InMemory provider cannot enforce the constraint, so the rule has a `tier=integration` test on a real PostgreSQL with two
 concurrent requests for one slot: exactly one succeeds.
