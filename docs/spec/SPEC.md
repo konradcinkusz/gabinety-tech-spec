@@ -154,7 +154,7 @@ Dependency budget:
 | Directory, Booking, Reputation, Assistant | EF Core, `Npgsql.EntityFrameworkCore.PostgreSQL`, `Microsoft.EntityFrameworkCore.InMemory` (development and tests), `Microsoft.AspNetCore.OpenApi`. `Microsoft.EntityFrameworkCore.Design` is tooling only |
 | AppHost | `Aspire.Hosting.AppHost`, `Aspire.Hosting.PostgreSQL`, `Aspire.Hosting.NodeJs` (or the current Aspire JavaScript hosting package) |
 | tests | xUnit, `Microsoft.AspNetCore.Mvc.Testing`, `Microsoft.Extensions.TimeProvider.Testing`, `Testcontainers.PostgreSql` |
-| web | `next`, `react`, `react-dom`, `typescript`, `jose` (JWT verification in middleware); dev: `eslint`, `vitest`, `@playwright/test`, `@axe-core/playwright`, `openapi-typescript`. No UI kit, no state library, no CSS framework, no analytics |
+| web | `next`, `react`, `react-dom`, `typescript`, `jose` (JWT verification in middleware); dev: `eslint`, `vitest`, `@playwright/test`, `@axe-core/playwright`, `openapi-typescript`, and for component tests only `@testing-library/react`, `@testing-library/user-event`, `jsdom`, `@vitejs/plugin-react`. No UI kit, no state library, no CSS framework, no analytics |
 
 A package outside this table is requested by the implementer in the PR description and added by the supervisor (SUPERVISOR §4).
 
