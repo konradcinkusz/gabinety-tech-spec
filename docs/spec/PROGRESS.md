@@ -110,6 +110,8 @@ platform; a run against the real dependency). This list is part of every status 
 
 ## Owner actions outstanding
 
+None of these block work; the director continues around them (DECISIONS log, 2026-11-16).
+
 - D-08 dates and D-26 provider: state by 2026-12-31 (decision log). N of M2 = 4 weeks is a default.
 - Approve or reject spec PR https://github.com/konradcinkusz/gabinety-tech-spec/pull/6 (CONTRACTS 4.1 constraint expression); T-04.04 is blocked on it.
 - T-00.02 (no longer blocks the scaffold, which is merged, but protects `main`): on BOTH repos set default branch `main`, auto-delete head branches, branch protection per D-13, secret scanning and push protection, GHCR. I cannot read or set these.
