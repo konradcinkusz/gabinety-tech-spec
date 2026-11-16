@@ -16,8 +16,8 @@ Rules, checked by `scripts/check-spec.sh` where a script can check them:
 | T-00.02 | not-started | | | Repository settings |
 | T-00.03 | merged | PRs https://github.com/konradcinkusz/gabinety-tech/pull/1, /pull/2, /pull/3, /pull/4. Three green runs of `ci` on commit 5645ebb: https://github.com/konradcinkusz/gabinety-tech/actions/runs/43908188697 (attempts 1-3); `secret-scan` https://github.com/konradcinkusz/gabinety-tech/actions/runs/43908188672 (attempts 1-3) | 2026-11-16 | Shells, kernel (telemetry, JWT, internal key, rate limit, origin guard, health, features), AppHost fake profile, Next.js shell, jobs build-test/web/integration/e2e/secret-scan, `docs/operations/CI.md`. Started before T-00.02 on the owner's instruction. Caveats: Copilot runtime bundle download (A-12) not measured; `RUNNER_LABELS` switch never exercised with a variable set; `e2e` job checks only `/health` per service
 | T-00.04 | not-started | | | First vertical slice against the real thing |
-| T-01.01 | not-started | | | Spike: the authservice integration surface |
-| T-01.02 | not-started | | | Spike: the Copilot SDK in this solution |
+| T-01.01 | in-flight | session_01RjKhVNPnMWpiAFM9UDzmun (claude-sonnet-5-5, effort medium), branch task/T-01.01-spike-authservice | 2026-11-16 | Spike: the authservice integration surface |
+| T-01.02 | in-flight | session_01RjKhVPJmFvTdrsJiUXTnBr (claude-sonnet-5-5, effort medium), branch task/T-01.02-spike-copilot-sdk | 2026-11-16 | Spike: the Copilot SDK in this solution |
 | T-01.03 | not-started | | | Contracts project |
 | T-01.04 | not-started | | | DevIdentity and the auth contract suite |
 | T-02.01 | not-started | | | Llm: contracts, fake gateway, options and health |
