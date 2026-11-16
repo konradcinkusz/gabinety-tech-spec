@@ -322,7 +322,7 @@ problem-details mapping to CONTRACTS §0, `AddJwtAuthentication` (validates agai
 
 ### 6.7 DevIdentity (`tools/Gabinety.DevIdentity`, ADR-0003)
 
-Responsibilities and limits are in the ADR: the register, login, refresh, logout, me, JWKS and discovery endpoints; synthetic seeded users `demo-client`, `demo-practitioner-1` to `demo-practitioner-8`, `demo-admin`; refuses to start without `GABINETY_FAKE=1`; no project under `src/` references it; no Dockerfile copies it.
+Responsibilities and limits are in the ADR: the register, login, refresh, logout, me, JWKS and discovery endpoints; synthetic seeded users `demo-client`, `demo-practitioner-1` to `demo-practitioner-8`, `demo-admin`; refuses to start without `GABINETY_FAKE=1`; no project under `src/` references it except `Gabinety.AppHost` (composition root, fake profile only); no Dockerfile copies it.
 
 ## 7. Test doubles and profiles
 
