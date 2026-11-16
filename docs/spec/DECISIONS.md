@@ -84,6 +84,7 @@ lands in the same pull request as the change to `SPEC.md`.
 
 | Date | Decision | Reason |
 |---|---|---|
+| 2026-11-16 | D-14 amended: implementer sub-sessions run on `claude-sonnet-5-5` with `effort: medium` (not Haiku). SUPERVISOR §10 stays as written (its stricter-brief rules are kept) | Owner instruction in chat |
 | 2026-11-13 | D-14: the director runs on `claude-sonnet-5-5` (the model the owner started the session on); implementers `claude-haiku-5-5`. Not Opus as proposed | Owner kept the session model |
 | 2026-11-13 | D-08: no account exists yet and no date is known. Each item is "not decided"; the owner states a date before T-09.01 starts, and in any case by 2026-12-31 | Owner asked for defaults; a date cannot be invented for an account |
 | 2026-11-13 | M2 N = 4 weeks after arrival of the payment sandbox account (default, owner may change) | Owner asked for defaults |
