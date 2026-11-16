@@ -14,7 +14,7 @@ Rules, checked by `scripts/check-spec.sh` where a script can check them:
 |---|---|---|---|---|
 | T-00.01 | merged | https://github.com/konradcinkusz/gabinety-tech-spec/pull/2 (check `spec` green, run 43439862658) | 2026-11-13 | Owner decisions recorded; defaults accepted by owner; ADR-0009 splits repos |
 | T-00.02 | not-started | | | Repository settings |
-| T-00.03 | not-started | | | Scaffold and empty pipeline green |
+| T-00.03 | in-flight | Part 1: https://github.com/konradcinkusz/gabinety-tech/pull/1 (merged). Part 2: https://github.com/konradcinkusz/gabinety-tech/pull/2 (merged); CI run https://github.com/konradcinkusz/gabinety-tech/actions/runs/43889082532 (`build-test`, `web`, `e2e` success; `secret-scan` run 43889082690 success) | 2026-11-16 | Parts 1 and 2 of 3 merged: shells, kernel (health, features), AppHost fake profile, Next.js shell. Open: telemetry/JWT/internal-key/rate-limit/origin guard in the kernel, `docker-build`, `integration`, CI.md, three consecutive green runs on one commit. Started before T-00.02 on the owner's instruction (2026-11-16) |
 | T-00.04 | not-started | | | First vertical slice against the real thing |
 | T-01.01 | not-started | | | Spike: the authservice integration surface |
 | T-01.02 | not-started | | | Spike: the Copilot SDK in this solution |
@@ -101,10 +101,11 @@ Say exactly what the proof covers and what it does not (platform, start command,
 What is still unproven although the code exists (for example: three consecutive green runs on one commit; a run on a second
 platform; a run against the real dependency). This list is part of every status report.
 
-- Everything: no code exists yet; the specification was drafted on 2026-11-12 and has not been through T-00.01 (owner decisions are proposed, not decided).
+- All behaviour: the code is shells with health endpoints. No feature exists. Decisions were recorded 2026-11-13 (defaults); a lawyer has not seen them.
 - The Copilot SDK behaviours of COPILOT-SDK §9 (A-04, A-05, A-08 to A-12): carried over from the chess project's documents, never run against a real login here.
 - authservice's claim names, endpoints and image (A-01, A-02): taken from its README, not yet read from source or run (T-01.01).
-- Three consecutive green runs of the pipeline on one commit (T-00.03).
+- Three consecutive green runs of the pipeline on one commit (T-00.03): one green run exists (2026-11-16), not three.
+- The default profile (PostgreSQL and authservice in Docker) has not been run; the fake profile was run locally and in CI (`e2e` job) with only a `/health` check per service.
 
 ## Owner actions outstanding
 
