@@ -11,3 +11,5 @@ Gabinety Tech — a Polish marketplace where clients book a fixed-price paid con
 - Report what was measured as measured and what was concluded as a conclusion.
 - English for code, comments and docs; Polish only for user-facing text, in `web/src/i18n/pl.ts` and the notification templates.
 - Verify: `scripts/check-spec.sh && scripts/check-open-markers.sh`; once code exists also `dotnet build -warnaserror && dotnet test --filter "tier!=integration"` and, for web changes, `pnpm --dir web lint && pnpm --dir web typecheck && pnpm --dir web test && pnpm --dir web build`.
+
+- **Autonomy (owner instruction 2026-11-16, DECISIONS log):** the director decides and merges everything itself, asks the owner nothing, and queues only physically owner-only actions in `PROGRESS.md` without blocking on them.
