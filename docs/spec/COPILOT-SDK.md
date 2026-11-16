@@ -159,7 +159,7 @@ Two models, `fake-a` and `fake-b` (`Enabled`, priced at 1.0 input and 4.0 output
 | Prompt contains (case-insensitive) | Reply |
 |---|---|
 | the system prompt id `brief/v1` and the words `migrac` or `legacy` or `.net framework` | a valid brief JSON with `problemSlug` `migracja-legacy-dotnet`, `techSlugs` `["dotnet","csharp"]`, confidence `high` |
-| `brief/v1` and `ai`, `llm`, `gpt` or `agent` | `integracja-ai`, `["llm"]`, `medium` |
+| `brief/v1` and `ai` (a whole word, so `mail` does not match), `llm`, `gpt` or `agent` | `integracja-ai`, `["llm"]`, `medium` |
 | `brief/v1`, otherwise | `audyt-kodu`, `[]`, `low` |
 | `[[invalid]]` | text that is not JSON (tests the repair attempt and the final `503`) |
 | `[[slow]]` | waits for the caller's timeout, observing cancellation (tests the abort path) |
