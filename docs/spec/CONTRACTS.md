@@ -34,7 +34,7 @@ abstraction, not the claim string):
 |---|---|---|
 | `UserId` | token subject (`sub`) | the owner of a practitioner profile, a booking, a review. authservice's string user id, an opaque string (not asserted to be a GUID): contracts type it as `string` |
 | `IsAdmin` | the authservice platform role `Admin` or `SuperAdmin`, read from the claim `http://schemas.microsoft.com/ws/2008/06/identity/claims/role` (ASP.NET Core presents it as `ClaimTypes.Role`); a user with several roles carries the claim several times (`docs/spikes/authservice.md` D1) | every `/api/v1/admin/...` endpoint |
-| `Email`, `EmailVerified` | the claims `email` and `email_verified` (JSON boolean), always present in session tokens (spike D2); `GET /api/v1/auth/me` is not needed for them | verification badge, notifications |
+| `Email`, `EmailVerified` | the claim `email` (always present). `email_verified` is **not** in the access token of an ordinary user (measured on the real authservice v0.3.4, `docs/spikes/first-real-result.md`, 2026-11-16): the verified state is read from `GET /api/v1/auth/me` (`emailConfirmed`) with the user's token when Directory needs it | verification badge, notifications |
 
 Roles of the marketplace are facts in Directory (§3): a user **is a practitioner** when a `practitioners` row has their
 `UserId`; **is a moderator** when a `moderators` row has it; every signed-in user is a client. No token claim names them (ADR-0002).
