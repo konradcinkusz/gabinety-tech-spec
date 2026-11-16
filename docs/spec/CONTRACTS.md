@@ -27,14 +27,14 @@
 
 ## 1. Identity
 
-Token claims used (names are an assumption until spike T-01.01 reads them from authservice, A-01; the contract is the
+Token claims used (names read from authservice by spike T-01.01, `docs/spikes/authservice.md`, 2026-11-16; the contract is the
 abstraction, not the claim string):
 
 | Abstraction | Source | Used for |
 |---|---|---|
-| `UserId` | token subject (`sub`) | the owner of a practitioner profile, a booking, a review |
-| `IsAdmin` | the authservice platform role `Admin` or `SuperAdmin` | every `/api/v1/admin/...` endpoint |
-| `Email`, `EmailVerified` | token claims, if present; otherwise authservice `GET /api/v1/auth/me` | verification badge, notifications |
+| `UserId` | token subject (`sub`) | the owner of a practitioner profile, a booking, a review. authservice's string user id, an opaque string (not asserted to be a GUID): contracts type it as `string` |
+| `IsAdmin` | the authservice platform role `Admin` or `SuperAdmin`, read from the claim `http://schemas.microsoft.com/ws/2008/06/identity/claims/role` (ASP.NET Core presents it as `ClaimTypes.Role`); a user with several roles carries the claim several times (`docs/spikes/authservice.md` D1) | every `/api/v1/admin/...` endpoint |
+| `Email`, `EmailVerified` | the claims `email` and `email_verified` (JSON boolean), always present in session tokens (spike D2); `GET /api/v1/auth/me` is not needed for them | verification badge, notifications |
 
 Roles of the marketplace are facts in Directory (§3): a user **is a practitioner** when a `practitioners` row has their
 `UserId`; **is a moderator** when a `moderators` row has it; every signed-in user is a client. No token claim names them (ADR-0002).
@@ -98,7 +98,8 @@ GIN on `offerings(tech_slugs)` (PostgreSQL). A query that filters then projects 
 | `POST /api/v1/me/practitioner/offerings` | practitioner | `{ title, description, durationMinutes, priceMinor, problemSlug, techSlugs[], meetingUrl? }` | `201`; at most 5 active offerings per practitioner (`422 too_many_offerings`) |
 | `PUT /api/v1/me/practitioner/offerings/{id}` | owner | same | price and duration changes affect only bookings made afterwards |
 | `POST /api/v1/me/practitioner/offerings/{id}/deactivate` | owner | — | `204`; existing bookings unaffected |
-| `POST /api/v1/me/practitioner/github-link` | practitioner | — | `204`; Directory reads the GitHub login from the user's authservice account (`GET /api/v1/auth/me` or the claim, A-01) and sets `github_linked` and `github_login`; `422 github_not_linked` when the account has no GitHub sign-in |
+| `POST /api/v1/me/practitioner/github-link` | practitioner | `{ githubLogin }` (GitHub handle: `[A-Za-z0-9-]{1,39}`) | `200 { code, instruction }`: a one-time code `gabinety-verify-<10 random characters>` that the practitioner puts in the bio of that public GitHub profile; the code and the handle are stored with a 30 minute expiry. authservice cannot supply a GitHub handle (it stores only the provider key; spike section 6), so control of the account is proven through GitHub's public profile instead |
+| `POST /api/v1/me/practitioner/github-link/verify` | practitioner | — | `204` when the public profile of the stored handle (GitHub `GET /users/{login}`, 5 s, no retry, no token) has the code in its `bio`; then `github_linked` and `github_login` are set and the code is cleared. `422 github_not_linked` when the code is absent, expired or the profile does not exist; `503 dependency_unavailable` when GitHub does not answer |
 
 ### 3.4 Admin API (`IsAdmin`)
 
