@@ -14,7 +14,7 @@ not a general OIDC provider: no client-credentials grant, no ID tokens, no useri
 - authservice runs from its published container image as its own app. Its source is never modified here.
 - The meaning of "practitioner" and "moderator" is owned by the Directory service, keyed by the token subject (`sub`).
   "Administrator" is the authservice platform role `Admin` or `SuperAdmin`, read from the token.
-- GitHub sign-in through authservice is how a practitioner proves control of a GitHub account (SPEC §6.1 verification).
+- A practitioner proves control of a GitHub account with a one-time code in the public bio of that profile (CONTRACTS §3.3), not through authservice: authservice stores no GitHub handle and has no authenticated link endpoint (amended 2026-11-16, `docs/spikes/authservice.md`).
 - Service-to-service calls do not use authservice tokens (ADR-0007).
 
 ## Consequences
