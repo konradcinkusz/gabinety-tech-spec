@@ -85,6 +85,27 @@ Rules, checked by `scripts/check-spec.sh` where a script can check them:
 | T-10.05 | not-started | | | Runbook, backups and restore |
 | T-10.06 | not-started | | | Ranking changelog |
 | T-10.07 | not-started | | | M3 checkpoint |
+| T-11.01 | not-started | | | Contracts, ADR and decisions for wave 3 (this PR) |
+| T-11.02 | not-started | | | Directory: technologies on the card, price sort |
+| T-11.03 | not-started | | | Directory: next free time stored, exposed, sortable |
+| T-11.04 | not-started | | | Booking: push the next free time |
+| T-11.05 | not-started | | | Web: sort, technologies, next free time on the list |
+| T-11.06 | not-started | | | DevIdentity: forgot, reset, change password |
+| T-11.07 | not-started | | | Web: forgot and reset password pages |
+| T-11.08 | not-started | | | Web: change password on /konto |
+| T-11.09 | not-started | | | Billing: the reschedule rule |
+| T-11.10 | not-started | | | Booking: reschedule endpoint, migration, notification |
+| T-11.11 | not-started | | | Web: reschedule page |
+| T-11.12 | not-started | | | Booking: notification preferences |
+| T-11.13 | not-started | | | Web: notification preferences on /konto |
+| T-11.14 | not-started | | | Booking: from and to on the bookings list |
+| T-11.15 | not-started | | | Booking: earnings endpoint |
+| T-11.16 | not-started | | | Web: practitioner calendar |
+| T-11.17 | not-started | | | Web: earnings on the dashboard |
+| T-11.18 | not-started | | | Web: help page and support address |
+| T-11.19 | not-started | | | Web: GitHub avatar proxy |
+| T-11.20 | not-started | | | Journeys J8 and J9 |
+| T-11.21 | not-started | | | Wave 3 checkpoint |
 
 ## Gates
 

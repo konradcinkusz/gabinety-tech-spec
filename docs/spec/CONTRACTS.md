@@ -57,7 +57,7 @@ A taxonomy version string (`2026-11-v1`) is stored in a `taxonomy_meta` row; a s
 
 | Table | Columns (type) |
 |---|---|
-| `practitioners` | `id` uuid PK · `user_id` string(64) unique · `slug` string(60) unique · `display_name` string(80) · `headline` string(120) · `bio` string(2000), plain text · `github_login` string(39)? · `github_linked` bool · `nip` string(10)? · `nip_valid` bool · `portfolio_url` string(300)? https only · `meeting_url_default` string(300)? https only · `status` enum `Draft\|Submitted\|Approved\|Rejected\|Suspended` · `status_reason` string(500)? · `approved_at` ts? · `created_at` ts · `updated_at` ts · `rating_count` int · `rating_avg` decimal(3,2) · `reputation_version` long · `completed_count` int · `practitioner_cancel_count` int · `no_show_upheld_count` int · `open_slots_14d` int · `stats_version` long · `profile_completeness` decimal(3,2) · `ranking_score` decimal(5,2) · `ranking_version` string(20) |
+| `practitioners` | `id` uuid PK · `user_id` string(64) unique · `slug` string(60) unique · `display_name` string(80) · `headline` string(120) · `bio` string(2000), plain text · `github_login` string(39)? · `github_linked` bool · `nip` string(10)? · `nip_valid` bool · `portfolio_url` string(300)? https only · `meeting_url_default` string(300)? https only · `status` enum `Draft\|Submitted\|Approved\|Rejected\|Suspended` · `status_reason` string(500)? · `approved_at` ts? · `created_at` ts · `updated_at` ts · `rating_count` int · `rating_avg` decimal(3,2) · `reputation_version` long · `completed_count` int · `practitioner_cancel_count` int · `no_show_upheld_count` int · `open_slots_14d` int · `next_free_slot_utc` ts? · `stats_version` long · `profile_completeness` decimal(3,2) · `ranking_score` decimal(5,2) · `ranking_version` string(20) |
 | `offerings` | `id` uuid PK · `practitioner_id` FK · `title` string(80) · `description` string(600) · `duration_minutes` smallint (30 or 60) · `price_minor` long (5000 to 150000) · `currency` string(3) = `PLN` · `problem_slug` string(60) FK · `tech_slugs` array of string · `meeting_url` string(300)? https only · `is_active` bool · `created_at` ts |
 | `categories` | `slug` PK · `kind` `problem\|tech` · `name_pl` string(80) · `sort` int · `is_active` bool |
 | `taxonomy_meta` | `version` string(20), one row |
@@ -74,14 +74,14 @@ GIN on `offerings(tech_slugs)` (PostgreSQL). A query that filters then projects 
 | Method, path | Query / body | Response |
 |---|---|---|
 | `GET /api/v1/taxonomy` | — | `{ version, problems: [{slug, namePl}], techs: [{slug, namePl}] }` |
-| `GET /api/v1/practitioners` | `problem`, `tech`, `q` (≤60, matches name and headline, case-insensitive), `duration` (30\|60), `maxPriceMinor`, `cursor`, `limit` | `{ items: [PractitionerCard], nextCursor? }`; only `Approved`; order = ranking (§9.3): score desc, `approved_at` asc, id asc |
+| `GET /api/v1/practitioners` | `problem`, `tech`, `q` (≤60, matches name and headline, case-insensitive), `duration` (30\|60), `maxPriceMinor`, `sort` (`rank` default \| `price_asc` \| `price_desc` \| `next_slot`), `cursor`, `limit` | `{ items: [PractitionerCard], nextCursor? }`; only `Approved`. `sort=rank`: ranking (§9.3): score desc, `approved_at` asc, id asc. `price_asc` / `price_desc`: the lowest active offering price, then the ranking order. `next_slot`: `next_free_slot_utc` asc with practitioners that have none last, then the ranking order. Every order is total (it ends with the id) and the cursor encodes the sort; an unknown `sort` is `400 validation_failed` (wave 3, additive) |
 | `GET /api/v1/practitioners/{slug}` | — | `PractitionerProfile` or `404 not_found` (also for any status other than `Approved`) |
 | `GET /api/v1/ranking-rules` | — | `{ version, effectiveFrom, weights: { rating, reliability, availability, completeness }, constants: { m, mu, minReviewsToShowRating, slotsForFullAvailability } }`, produced from `Gabinety.Ranking` (the single source of the public page `/zasady-rankingu`) |
 | `GET /api/v1/sitemap` | — | `{ practitioners: [{slug, lastModified}], categories: [{path, practitionerCount, indexable}] }`; `indexable` is true from 3 approved practitioners |
 
 `PractitionerCard`: `id`, `slug`, `displayName`, `headline`, `githubLogin?`, `badges` (array of `email`, `github`, `nip`, `approved`),
 `rating?` (`{ average, count }`, present only when `count` ≥ 3), `isNew` (true when `count` < 3), `fromPrice` (money, the lowest active offering),
-`problemSlugs`, `durations`.
+`problemSlugs`, `durations`, `techSlugs` (the union over the active offerings, sorted, at most 6) and `nextFreeSlotUtc?` (start of the earliest bookable slot in the next 14 days; absent when there is none or Booking has not pushed it yet). The last two are wave 3 additions.
 `PractitionerProfile`: the card plus `bio`, `portfolioUrl?`, `offerings: [Offering]` (active only; `meetingUrl` never included), `completedCount`, `memberSince`.
 `Offering`: `id`, `title`, `description`, `durationMinutes`, `price` (money), `problemSlug`, `techSlugs`.
 
@@ -131,7 +131,7 @@ GIN on `offerings(tech_slugs)` (PostgreSQL). A query that filters then projects 
 | `GET /internal/v1/offerings/{id}` | Booking | `{ offeringId, practitionerId, practitionerUserId, practitionerStatus, title, durationMinutes, price, meetingUrl (offering's or the practitioner's default), isActive }` |
 | `GET /internal/v1/practitioners/by-user/{userId}` | Booking, Reputation | `{ practitionerId, status }` or `404` |
 | `PUT /internal/v1/practitioners/{id}/reputation` | Reputation | `{ ratingCount, ratingAvg, version }`: applied only when `version` is greater than the stored `reputation_version`; recomputes the ranking; `204` also when ignored (idempotent) |
-| `PUT /internal/v1/practitioners/{id}/booking-stats` | Booking | `{ completedCount, practitionerCancelCount, noShowUpheldCount, openSlots14d, version }`: same monotonic rule on `stats_version` |
+| `PUT /internal/v1/practitioners/{id}/booking-stats` | Booking | `{ completedCount, practitionerCancelCount, noShowUpheldCount, openSlots14d, nextFreeSlotUtc?, version }`: same monotonic rule on `stats_version`; `nextFreeSlotUtc` omitted means none (wave 3, additive: a push without the field clears it) |
 | `DELETE /internal/v1/subjects/{userId}` | an administrator's erasure job | anonymises the practitioner row (display name `Usunięty użytkownik`, text cleared, status `Suspended`, `user_id` replaced by a random value) |
 
 ## 4. Booking (`bookingdb`)
@@ -146,8 +146,11 @@ GIN on `offerings(tech_slugs)` (PostgreSQL). A query that filters then projects 
 | `payments` | `id` · `booking_id` unique · `provider` string(20) · `provider_payment_id` string(100)? · `amount_minor` · `status` `Created\|Succeeded\|Failed\|Refunded\|PartiallyRefunded` · `refunded_minor` long · `created_at` · `updated_at` |
 | `webhook_events` | `provider` · `event_id` · PK together · `received_at` · `outcome` `Applied\|Duplicate\|Ignored\|Rejected` |
 | `ledger_entries` | `id` · `booking_id` · `kind` `ClientCharge\|Refund\|PlatformFee\|PractitionerPayout\|PayoutReversal` · `amount_minor` long (always positive; the kind gives the direction) · `pair_key` string(80)? (set on `PlatformFee`: `<client_user_id>:<practitioner_id>`) · `created_at`. Append-only. **Unique partial index** on `pair_key` where `kind = PlatformFee` makes "one fee per pair" race-safe |
+| `notification_preferences` | `user_id` string(64) · `kind` (`Reminder24h\|Reminder1h\|ReviewRequest`) · `enabled` bool · PK `(user_id, kind)`. No row means enabled. Transactional kinds (`BookingConfirmed`, `Rescheduled`, `Cancelled`, `Dispute*`, `PayoutSent`) are never switchable (wave 3) |
 | `payouts` | `id` · `booking_id` unique · `practitioner_id` · `amount_minor` · `status` `Pending\|Sent\|Failed` · `provider_ref`? · `created_at` · `sent_at`? |
-| `notifications` | `id` · `booking_id` · `kind` `BookingConfirmed\|Reminder24h\|Reminder1h\|Cancelled\|ReviewRequest\|DisputeOpened\|DisputeResolved\|PayoutSent` · `to_user_id` · `due_at` ts · `sent_at`? · `attempts` int. Unique `(booking_id, kind, to_user_id)` |
+| `notifications` | `id` · `booking_id` · `kind` `BookingConfirmed\|Reminder24h\|Reminder1h\|Cancelled\|ReviewRequest\|DisputeOpened\|DisputeResolved\|PayoutSent\|Rescheduled` · `to_user_id` · `due_at` ts · `sent_at`? · `attempts` int. Unique `(booking_id, kind, to_user_id)` |
+
+`bookings` also has `reschedule_count` smallint (default 0) and `rescheduled_at` ts? (wave 3).
 
 **No double booking.** PostgreSQL: an exclusion constraint
 `EXCLUDE USING gist (practitioner_id WITH =, tsrange(start_utc AT TIME ZONE 'UTC', (end_utc AT TIME ZONE 'UTC') + interval '15 minutes') WITH &&) WHERE (status IN ('PendingPayment','Confirmed','Disputed'))`
@@ -165,8 +168,12 @@ concurrent requests for one slot: exactly one succeeds.
 | `PUT /api/v1/me/availability` | practitioner | `{ rules: [{ isoWeekday, startLocal, endLocal }], exceptions: [{ dateLocal }] }` replaces both; at most 28 rules, 90 exceptions; recomputes `openSlots14d` and pushes booking-stats to Directory |
 | `POST /api/v1/bookings` | client, header `Idempotency-Key` | `{ offeringId, startUtc, brief: { text (20 to 2000), problemSlug?, aiAssisted } }` → `201 { bookingId, status: "PendingPayment", holdExpiresAt, checkoutUrl }`. Errors: `422 slot_unavailable`, `409 slot_taken`, `422 offering_inactive`, `422 own_offering`, `422 practitioner_not_bookable`, `429 rate_limited` |
 | `GET /api/v1/bookings/{id}` | client, practitioner of it, or admin | `BookingView` (§4.4) |
-| `GET /api/v1/me/bookings` | any user | `role` (`client`\|`practitioner`), `status`, `cursor` → `{ items: [BookingView], nextCursor? }`, newest start first |
+| `GET /api/v1/me/bookings` | any user | `role` (`client`\|`practitioner`), `status`, `from`, `to` (dates, both optional, `to − from ≤ 62 days`, filter on `start_utc` in `Europe/Warsaw` days; wave 3), `cursor` → `{ items: [BookingView], nextCursor? }`, newest start first |
+| `POST /api/v1/bookings/{id}/reschedule` | client | `{ startUtc }` → `BookingView`; moves a `Confirmed` booking to another free slot of the same offering. Allowed when `start_utc − now ≥ 24 h` (the full-refund window of §9.2, read from `Gabinety.Billing`, never a second constant), `reschedule_count` is 0 and the new `startUtc` is a slot §9.4 offers now. Errors: `409 invalid_transition` (not `Confirmed`, or already rescheduled once), `422 reschedule_not_allowed` (inside the window), `422 slot_unavailable`, `409 slot_taken`. No money moves; the payment and the ledger are untouched |
 | `POST /api/v1/bookings/{id}/cancel` | client or practitioner of it | `{ reason? }` → `BookingView`; §8.1 and §9.2 decide status and refund |
+| `GET /api/v1/me/notification-preferences` | any user | → `{ items: [{ kind, enabled }] }` for the three switchable kinds (wave 3) |
+| `PUT /api/v1/me/notification-preferences` | any user | `{ items: [{ kind, enabled }] }` (only switchable kinds; others `400 validation_failed`) → the same shape. The dispatcher does not create, or does not send, a notification of a kind the recipient switched off (wave 3) |
+| `GET /api/v1/me/earnings` | practitioner | `from`, `to` (dates, optional, default the current month, `to − from ≤ 366 days`) → `{ from, to, paidOut, pending, disputed, fees, count }` all money except `count`: `paidOut` = sum of `Sent` payouts whose `sent_at` is in range; `pending` = payouts `Pending` and bookings `Completed`/`ClientNoShow`/`LateCancelledByClient` without a payout yet; `disputed` = price of `Disputed` bookings; `fees` = `PlatformFee` ledger entries of the range (wave 3) |
 | `POST /api/v1/bookings/{id}/dispute` | client | `{ kind: "not_as_described"\|"practitioner_no_show"\|"other", text (10 to 1000) }` → `BookingView`; allowed from `ended_at` until `ended_at + 48 h`, or for `practitioner_no_show` from `start_utc` until `start_utc + 72 h` |
 | `POST /api/v1/bookings/{id}/report-client-no-show` | practitioner | — → `BookingView`; allowed from `start_utc + 15 min` until `start_utc + 72 h` |
 | `POST /api/v1/payments/simulate` | any signed-in user, **only when `Payments:Provider` is `Mock`**, otherwise `403` | `{ bookingId, outcome: "succeeded"\|"failed" }` → runs the same handler as the webhook |
@@ -249,6 +256,7 @@ calls authservice), `/api/proxy/[...path]` (catch-all to the services by the can
 | `PendingPayment` | hold expires or `PaymentFailed` | `Expired` | slot released; if a payment succeeds after expiry it is refunded in full and recorded `Refund` |
 | `Confirmed` | cancel (client), start − now ≥ 24 h | `CancelledByClient` | full refund (§9.2); ledger `Refund`; stats unchanged |
 | `Confirmed` | cancel (client), start − now < 24 h | `LateCancelledByClient` | no refund; `payout_due_at = start_utc`; fee as for completion; no review |
+| `Confirmed` | reschedule (client), start − now ≥ 24 h, first time | `Confirmed` | `start_utc`, `end_utc` replaced; `reschedule_count` 1; `rescheduled_at`; the unsent reminders are re-timed to the new start; `Rescheduled` notification to both parties. Not a status change, but a transition in one transaction; the exclusion constraint of §4.1 guards the new slot |
 | `Confirmed` | cancel (practitioner), any time before end | `CancelledByPractitioner` | full refund; `practitioner_cancel_count` + 1 |
 | `Confirmed` | time passes `end_utc + 48 h` with no dispute | `Completed` | `ended_at = end_utc`; fee and payout computed (§9.1); `payout_due_at = end_utc + 48 h`; stats `completed_count` + 1 |
 | `Confirmed` | report-client-no-show (practitioner) | `ClientNoShow` | counts as completed for money; `payout_due_at` = report time; no review |
@@ -317,12 +325,16 @@ Given availability rules, exceptions, the offering duration `d` (30 or 60 minute
 5. Output ordered by start, unique.
 DST test vectors: 2027-03-28 (clocks 02:00 to 03:00): a rule 01:00–04:00 yields starts 01:00 and 01:30 (local, +01:00) and 03:00, 03:30 (local, +02:00), none in 02:xx; 2027-10-31 (03:00 back to 02:00): a rule 02:00–04:00 yields the first 02:00 and 02:30 (+02:00), then 03:00 and 03:30 (+01:00); with `d = 60` the same autumn rule 02:00–04:00 yields starts 02:00, 02:30 and 03:00 (a start is kept only while `start + d` is not later than `end_local` on the wall clock). Both dates are Sundays, ISO weekday 7. The first occurrence of an ambiguous hour is the only one offered.
 
+**Wave 3 routes of the Blazor host** (the host replaced the Next.js BFF, ADR-0010 of the code repository; this section describes the browser-facing surface, not a service contract):
+`/zapomniane-haslo` (request a reset e-mail, the answer is the same for every address), `/reset-password?token=&email=` (the link authservice mails: its `FrontendBaseUrl` is `Site:BaseUrl`; sets the new password, then sends the person to sign in), the password and notification sections of `/konto`,
+`/moje/rezerwacje/{id}/zmien-termin` (reschedule), `/gabinet-programisty/kalendarz` (week view), `/pomoc`, and `GET /avatar/{slug}` (the verified GitHub avatar of an approved practitioner, fetched and cached by the host, ADR-0013; `404` when there is none).
+
 ## 10. Errors and limits
 
 ### 10.1 Error codes
 
 `validation_failed` 400 · `unauthenticated` 401 · `forbidden` 403 · `not_found` 404 · `invalid_transition` 409 · `slot_taken` 409 · `idempotency_conflict` 409 · `practitioner_exists` 409 · `already_reviewed` 409 · `already_replied` 409 ·
-`slot_unavailable` 422 · `offering_inactive` 422 · `own_offering` 422 · `practitioner_not_bookable` 422 · `submit_incomplete` 422 · `too_many_offerings` 422 · `contact_details_not_allowed` 422 · `github_not_linked` 422 · `not_reviewable` 422 · `invalid_input` 422 ·
+`slot_unavailable` 422 · `offering_inactive` 422 · `own_offering` 422 · `reschedule_not_allowed` 422 · `practitioner_not_bookable` 422 · `submit_incomplete` 422 · `too_many_offerings` 422 · `contact_details_not_allowed` 422 · `github_not_linked` 422 · `not_reviewable` 422 · `invalid_input` 422 ·
 `rate_limited` 429 · `assistant_unavailable` 503 · `dependency_unavailable` 503. A foreign origin is `403 forbidden` with code `cross_site_request`.
 
 ### 10.2 Rate limits (per instance, sliding window; the key is the user id when signed in, else the client address)
@@ -345,7 +357,7 @@ DST test vectors: 2027-03-28 (clocks 02:00 to 03:00): a rule 01:00–04:00 yield
 | Booking | `Billing:FirstConsultationFeeBps` 1500 · `Booking:MinLeadHours` 12 · `Booking:HoldMinutes` 10 · `Booking:BufferMinutes` 15 · `Booking:CompleteAfterHours` 48 · `Payments:Provider` (`Mock`\|`<vendor>`) `Mock` · `Payments:WebhookSecret` (secret) · `Notifications:Provider` (`Log`\|`Smtp`) `Log` |
 | Reputation | `Reviews:BlockedTerms` (list) · `Reviews:WindowDays` 14 |
 | Assistant | `Llm:Provider` (`Copilot`\|`Fake`) · `Copilot:*` and `Arena`-style custom model keys, see `COPILOT-SDK.md` §6 · `Assistant:RequireApiKeyModelsForTraffic` true · `Assistant:DailyBudgetUsd` 5 · `Assistant:BriefTimeoutSeconds` 30 · `Assistant:TriageTimeoutSeconds` 25 |
-| Web | `Backend:Directory`, `Backend:Booking`, `Backend:Reputation`, `Backend:Assistant`, `Backend:Auth` (candidate lists), `Site:BaseUrl` |
+| Web | `Backend:Directory`, `Backend:Booking`, `Backend:Reputation`, `Backend:Assistant`, `Backend:Auth` (candidate lists), `Site:BaseUrl`, `Support:Email` (optional, shown on `/pomoc`; absent means no address is shown) |
 | fake profile | `GABINETY_FAKE=1` sets `Llm:Provider=Fake`, `Database:Provider=InMemory`, `Payments:Provider=Mock`, `Notifications:Provider=Log`, `Identity:Authority` = the DevIdentity URL |
 
 ### 10.4 Endpoints that exist only outside a deployed environment
