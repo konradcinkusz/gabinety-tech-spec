@@ -681,6 +681,183 @@ These four tasks are fixed. They exist because skipping them cost the most in th
 
 ---
 
+## Phase 11 — UX wave 3 (after the Blazor cutover and the UX waves 0 to 2)
+
+Origin: `docs/ui/UX-PLAN.md` of the code repository (items UX-070 to UX-076). The decisions behind it are in the DECISIONS log of 2026-11-22 and ADR-0013; the contract changes are in CONTRACTS 3.1, 3.2, 3.6, 4.1, 4.2, 8.1, 10.1 and 10.3. Paths are those of the code repository as it is after the cutover:
+the web host is `src/Gabinety.Web` (Blazor, static server rendering, one first-party script `wwwroot/enhance.js`, tokens and the shared stylesheet are finished: a task never edits `wwwroot/app.css` or `wwwroot/tokens.css`; a page rule goes into the page's own `Foo.razor.css`, colour only through tokens).
+Polish text is a constant in the nested class of the page's area in `src/Gabinety.Web/Text/*.cs` (never a literal in a `.razor` file). The hooks of the journeys (`docs/ui/DESIGN-CONTRACT.md` §9 of the code repository) are frozen: a task that changes one changes the journey in the same PR.
+**Common verify for a Phase 11 task** unless it says otherwise: `dotnet build -warnaserror && dotnet test --filter "tier!=integration"`; a task that changes a page also leaves `pnpm --dir tests/e2e exec playwright test journeys/ui-gate.spec.ts harness/enhance.spec.ts` green against the fake profile.
+
+### T-11.01 Contracts, ADR and decisions for wave 3
+- Executor: supervisor · Milestone: M3 · Depends: —
+- Read: CONTRACTS 3, 4, 8.1, 10; DECISIONS log 2026-11-22; ADR-0013
+- Files: `docs/spec/CONTRACTS.md`, `docs/spec/DECISIONS.md`, `docs/adr/0013-profile-picture-is-the-verified-github-avatar.md`, `docs/spec/TASKS.md`, `docs/spec/PROGRESS.md`, `README.md`
+- Do: 1) Additive v1 changes in CONTRACTS: list `sort`, card `techSlugs` and `nextFreeSlotUtc`, booking-stats `nextFreeSlotUtc`, reschedule endpoint and transition, notification preferences, earnings, `from` and `to` on the bookings list, `Rescheduled` notification kind, `reschedule_not_allowed`, `Support:Email`, the wave 3 web routes. 2) ADR-0013. 3) The decision rows. 4) Phase 11 in this file and its PROGRESS rows.
+- Accept: `scripts/check-spec.sh && scripts/check-open-markers.sh` pass; every endpoint named by a Phase 11 task exists in CONTRACTS.
+- Verify: `scripts/check-spec.sh && scripts/check-open-markers.sh`
+
+### T-11.02 Directory: technologies on the card and the price sort
+- Executor: implementer · Milestone: M3 · Depends: T-11.01
+- Read: CONTRACTS 3.1, 3.2, 0 (pagination); `service-api-patterns` (list queries); `testing-strategy`
+- Files: `src/Gabinety.Directory/Features/Search/**`, `tests/Gabinety.Directory.Tests/Search/**`
+- Do: 1) `PractitionerCard.techSlugs`: the sorted union of `tech_slugs` over the practitioner's active offerings, at most 6 (computed in the query, ordered before it projects: lesson #78). 2) `sort=price_asc|price_desc` with the total orders of CONTRACTS 3.2; the cursor carries the sort and a cursor of another sort is `400 validation_failed`; an unknown `sort` is `400 validation_failed`; `rank` stays the default and byte-for-byte the current order. 3) Unit tests for validation and cursor, and a `tier=integration` test on PostgreSQL for each order including ties on price.
+- Accept: `GET /api/v1/practitioners?sort=price_asc` lists the cheapest first and paging through all pages returns every practitioner once (test name `Price_sort_pages_return_each_practitioner_once`, integration); the default order is unchanged (an existing test still passes); `techSlugs` is present and sorted.
+- Verify: common verify; the `integration` CI job
+
+### T-11.03 Directory: the next free time, stored, exposed and sortable
+- Executor: implementer · Milestone: M3 · Depends: T-11.02
+- Read: CONTRACTS 3.1, 3.2, 3.6; `service-api-patterns` (migrations); the migration naming rule of this file
+- Files: `src/Gabinety.Directory/Persistence/Migrations/T-11.03_NextFreeSlot*.cs`, `src/Gabinety.Directory/Features/Internal/InternalFeature.cs`, `src/Gabinety.Directory/Features/Profiles/Practitioner.cs`, `src/Gabinety.Directory/Features/Search/**`, `tests/Gabinety.Directory.Tests/Internal/**`, `tests/Gabinety.Directory.Tests/Search/**`
+- Do: 1) Column `next_free_slot_utc` (nullable) and one migration `T-11.03_NextFreeSlot`. 2) `PUT /internal/v1/practitioners/{id}/booking-stats` accepts `nextFreeSlotUtc?`; a push without it clears the column; the monotonic `stats_version` rule is unchanged. 3) The card exposes `nextFreeSlotUtc`. 4) `sort=next_slot` (practitioners without a value last). 5) Tests: unit for the push, `tier=integration` for the order and the migration.
+- Accept: a push with `nextFreeSlotUtc` shows on the card; a later push without it clears it; `sort=next_slot` orders by it with nulls last (test `Next_slot_sort_puts_practitioners_without_a_slot_last`, integration); an old Booking pushing the old body still works (test).
+- Verify: common verify; the `integration` CI job
+
+### T-11.04 Booking: push the next free time with the booking stats
+- Executor: implementer · Milestone: M3 · Depends: T-11.03
+- Read: CONTRACTS 3.6, 9.4; the existing `StatsCalculator` and `StatsPushJob`
+- Files: `src/Gabinety.Booking/Jobs/StatsPush/**`, `tests/Gabinety.Booking.Tests/Jobs/**`
+- Do: 1) `StatsCalculator` also returns the start of the earliest bookable slot in the next 14 days over the practitioner's active offerings (the same slot logic as `GET .../slots`, so the lead time, buffers and active bookings count; none means null). 2) `BookingStatsPush` and `DirectoryStatsClient` send `nextFreeSlotUtc` (omitted when null). 3) The push is triggered where `openSlots14d` already is (availability change, booking created or cancelled) and by the periodic job; nothing else changes.
+- Accept: after a booking takes the earliest slot the next push carries the following slot (test `Next_free_slot_moves_when_the_first_slot_is_booked`); with no availability the field is omitted; the existing stats tests pass.
+- Verify: common verify
+
+### T-11.05 Web: sort, technologies and the next free time on the list
+- Executor: implementer · Milestone: M3 · Depends: T-11.02, T-11.03
+- Read: CONTRACTS 3.2; `docs/ui/DESIGN-CONTRACT.md` 4 and 5.3 of the code repository
+- Files: `src/Gabinety.Web/Api/Clients.cs`, `src/Gabinety.Web/Api/Dtos.cs` (the card record only), `src/Gabinety.Web/Components/Pages/Practitioners/**`, `src/Gabinety.Web/Text/Pl.cs` (nested `ListPage`, `Card`, `Filters`), `tests/Gabinety.Web.Tests/**` (list and card tests)
+- Do: 1) `PractitionerQuery` and `ListState` carry `sort` (query value `sortuj`: `trafnosc`, `cena-rosnaco`, `cena-malejaco`, `termin`), kept by every filter link and the search form; the default is not written to the URL. 2) A sort control in the result header: a `<select>` in a GET form with `data-enhance="autosubmit"` and a visible `Sortuj` button inside `<noscript>`. 3) The card shows up to 3 technologies as `.badge--neutral` (names from the taxonomy already loaded; unknown slug: omitted) and `Najbliższy termin: jutro, 09:30` (reuse `MyBookingsSchedule.Relative`; absent when the card has none). 4) A canonical URL for a sorted page is the unsorted one (`rel=canonical`), and a sorted page is `noindex`.
+- Accept: choosing `Cena rosnąco` lists the cheapest first (host test); every pagination link keeps the sort (test); a card with `nextFreeSlotUtc` shows the line and one without does not; the journeys J1 and the UI gate stay green.
+- Verify: common verify
+
+### T-11.06 DevIdentity: forgot, reset and change password
+- Executor: implementer · Milestone: M3 · Depends: T-11.01
+- Read: `docs/spikes/authservice.md`; the authservice v0.3.4 endpoints (`POST /api/v1/auth/forgot-password`, `reset-password`, `change-password`: request and response shapes as read in its `AuthController.cs` lines 691 to 830); `tools/Gabinety.DevIdentity/README.md`
+- Files: `tools/Gabinety.DevIdentity/**`, `tests/Gabinety.Integration.Tests/AuthContract/**`
+- Do: 1) The three endpoints with the real shapes: forgot answers `200 { message, isOAuthOnly }` for every address (same message, no enumeration; `isOAuthOnly:true` with the provider message only for an account without a password); reset takes `{ email, token, newPassword }`, a wrong or used token or an unknown address is `400 { errors }`, success revokes the refresh tokens; change takes `{ currentPassword, newPassword }` with Bearer, a wrong current password is `400 { errors }`, success returns `{ message, sessionsRevoked, tokens }` with fresh tokens. The password rules are the existing ones. 2) A development-only `GET /dev/last-reset-token?email=` (exists only when `GABINETY_FAKE=1`) returns the last issued token, because the fake profile sends no e-mail. 3) Contract tests that run against DevIdentity and, where `AUTH_BASE_URL` points at the real image, against it; the wire shapes are asserted, not the wording.
+- Accept: forgot for a known and an unknown address are byte-identical; a reset token works once; change-password with a wrong current password is `400`; the suite passes against DevIdentity (unit tier) and the real image (integration job).
+- Verify: common verify; the `integration` CI job
+
+### T-11.07 Web: forgot and reset password pages
+- Executor: implementer · Milestone: M3 · Depends: T-11.06
+- Read: `identity-and-accounts` (enumeration safety, reset); CONTRACTS 1; `docs/operations/AUTH.md`; `docs/ui/DESIGN-CONTRACT.md` 5.5 of the code repository
+- Files: `src/Gabinety.Web/Auth/IdentityClient.cs`, `src/Gabinety.Web/Components/Pages/Account/ForgotPassword*.razor`, `src/Gabinety.Web/Components/Pages/Account/ResetPassword*.razor`, `src/Gabinety.Web/Components/Pages/Account/Login.razor` (one link only), `src/Gabinety.Web/Text/Pl.cs` (new nested classes `Forgot`, `Reset`), `deploy/fly/authservice.fly.toml` (`FrontendBaseUrl`), `docs/operations/AUTH.md`, `tests/Gabinety.Web.Tests/**` (new files)
+- Do: 1) `/zapomniane-haslo`: one e-mail field, a static form post with antiforgery, the answer always `Jeśli konto o tym adresie istnieje, wysłaliśmy wiadomość z linkiem.` (and for `isOAuthOnly` a sentence that the account signs in with GitHub); `rate_limited` is shown as the existing wait text; a link `Nie pamiętasz hasła?` on the sign-in page. 2) `/reset-password?token=&email=`: new password and confirmation with the rules list of registration, all problems at once; success redirects to `/logowanie` with the flash `Hasło zostało zmienione. Zaloguj się.`; a bad token shows one message and a link to request a new one. The token and the e-mail are read from the query once and kept in hidden fields, never logged, never rendered into a link. 3) `FrontendBaseUrl` in the authservice Fly config equals the site address, documented in `AUTH.md`; the check script `scripts/check-config-coverage.sh` stays green. 4) Both pages are `noindex`, `Referrer-Policy: no-referrer` for the reset page.
+- Accept: the host tests show the identical answer for a known and an unknown address; a reset with a valid token signs the person in nowhere and ends at the sign-in page; a reused token shows the bad-token message; no test or log line contains the token (a test greps the captured log); `RouteAuditTests` and `docs/operations/ROUTE-AUTH.md` list both routes as public.
+- Verify: common verify
+
+### T-11.08 Web: change the password on the account page
+- Executor: implementer · Milestone: M3 · Depends: T-11.06, T-11.07
+- Read: `identity-and-accounts`; the session cookie and refresh handling in `src/Gabinety.Web/Auth`
+- Files: `src/Gabinety.Web/Components/Pages/Account/Account.razor`, `src/Gabinety.Web/Components/Pages/Account/ChangePasswordForm.cs`, `src/Gabinety.Web/Auth/IdentityClient.cs`, `src/Gabinety.Web/Auth/SessionCookie.cs`, `src/Gabinety.Web/Text/Pl.cs` (nested `Account`), `tests/Gabinety.Web.Tests/**`
+- Do: 1) A `Zmień hasło` section on `/konto` (current, new, confirmation; hidden for an account without a password, which signs in with GitHub). 2) On success authservice returns fresh tokens (`ReissueTokensOnPasswordChange`): the host writes them into the session cookie in the same response so this session survives and the others end; when it returns none, the person is signed out and sent to the sign-in page with a flash. 3) All problems at once, the form summary pattern.
+- Accept: after a change the same browser is still signed in and an old refresh token is refused (host test against the fake identity); a wrong current password keeps the typed values and shows one error under that field; an account without a password sees no section.
+- Verify: common verify
+
+### T-11.09 Billing: the reschedule rule, pure
+- Executor: implementer · Milestone: M3 · Depends: T-11.01
+- Read: CONTRACTS 8.1, 9.2; `src/Gabinety.Billing/RefundPolicy.cs`, `BookingStateMachine.cs`
+- Files: `src/Gabinety.Billing/BookingStateMachine.cs`, `src/Gabinety.Billing/Reschedule*.cs`, `tests/Gabinety.Billing.Tests/**`
+- Do: 1) A pure `Reschedule.Decide(status, start, now, rescheduleCount)` returning `Allowed`, `NotConfirmed`, `AlreadyRescheduled` or `InsideWindow` (the window is `RefundPolicy.FullRefundWindow`; no new constant). 2) Test vectors: exactly 24 h before is allowed, 23 h 59 min is `InsideWindow`, a second reschedule is `AlreadyRescheduled`, every status other than `Confirmed` is `NotConfirmed`.
+- Accept: the vectors pass; the Billing project still has no reference to anything but itself (architecture test); `Billing` changes no existing public signature.
+- Verify: common verify
+
+### T-11.10 Booking: the reschedule endpoint, migration and notification
+- Executor: implementer · Milestone: M3 · Depends: T-11.09
+- Read: CONTRACTS 4.1, 4.2, 8.1, 9.4; the cancel feature and `BookingTransitions` as the model of a transition; `docs/operations/EMAIL.md`
+- Files: `src/Gabinety.Booking/Features/Lifecycle/Reschedule/**`, `src/Gabinety.Booking/Features/Bookings/Entities/Booking.cs`, `src/Gabinety.Booking/Persistence/Migrations/T-11.10_Reschedule*.cs`, `src/Gabinety.Booking/Notifications/Notification.cs`, `src/Gabinety.Booking/Notifications/NotificationTemplates.cs`, `src/Gabinety.Booking/Notifications/Scheduling/**`, `src/Gabinety.Booking/Features/Bookings/View/BookingViewFeature.cs` (`canReschedule`), `tests/Gabinety.Booking.Tests/Lifecycle/**`, `tests/Gabinety.Booking.Tests/Notifications/**`
+- Do: 1) Columns `reschedule_count` and `rescheduled_at`, one migration `T-11.10_Reschedule`. 2) `POST /api/v1/bookings/{id}/reschedule` per CONTRACTS 4.2: client of the booking only (`403` otherwise), the decision from `Reschedule.Decide`, the new slot must be one the slot calculator offers now for the same offering, one transaction under the per-practitioner advisory lock (creation uses the same lock), the exclusion constraint maps to `409 slot_taken`; the old slot is released by the same update. 3) The unsent reminders (`Reminder24h`, `Reminder1h`, `ReviewRequest`) are re-timed to the new start; a notification `Rescheduled` to both parties (Polish template: new date and the link, no free text). 4) `BookingView.canReschedule`. 5) Tests: unit per branch, and `tier=integration` on PostgreSQL for two concurrent reschedules into one slot (exactly one succeeds) and for the migration.
+- Accept: rescheduling 25 h ahead moves the booking and keeps the payment and the ledger untouched (test asserts both); 23 h ahead is `422 reschedule_not_allowed`; a second reschedule is `409 invalid_transition`; the old slot can be booked afterwards; both parties get one `Rescheduled` notification.
+- Verify: common verify; the `integration` CI job
+
+### T-11.11 Web: the reschedule page and its entry
+- Executor: implementer · Milestone: M3 · Depends: T-11.10
+- Read: `docs/ui/DESIGN-CONTRACT.md` 5.4, 5.6, 5.11 of the code repository; the slot picker component
+- Files: `src/Gabinety.Web/Components/Pages/Bookings/Reschedule*.razor`, `src/Gabinety.Web/Components/Pages/Bookings/BookingDetail.razor` (the entry link only), `src/Gabinety.Web/Components/Pages/Gabinet/SlotPicker.razor`, `SlotPickerModel.cs` (an optional parameter that replaces the booking link of a time), `src/Gabinety.Web/Api/Clients.cs`, `src/Gabinety.Web/Text/BookingsText.cs`, `tests/Gabinety.Web.Tests/**`
+- Do: 1) On the booking detail, when `canReschedule`, a `Zmień termin` ghost link to `/moje/rezerwacje/{id}/zmien-termin`. 2) The page shows the booking summary and the slot picker of the same offering, each time a form button (post) instead of a link; choosing one posts the reschedule, then redirects to the detail with the flash `Termin został zmieniony.`; refusals (`reschedule_not_allowed`, `slot_taken`, `slot_unavailable`, `invalid_transition`) show one Polish message at the place of the action. 3) The page is `[Authorize]`, `noindex`, and renders the forbidden page for a booking that is not the person's. 4) `SlotPicker` keeps its current behaviour when the new parameter is absent (its tests stay).
+- Accept: a host test reschedules through the fake Booking and sees the flash; a booking inside the window has no entry link and the page answers with the refusal text; the UI gate covers the new route; `docs/operations/ROUTE-AUTH.md` lists it.
+- Verify: common verify
+
+### T-11.12 Booking: notification preferences
+- Executor: implementer · Milestone: M3 · Depends: T-11.10
+- Read: CONTRACTS 4.1, 4.2; the notification writer, scheduler and dispatcher
+- Files: `src/Gabinety.Booking/Notifications/Preferences/**`, `src/Gabinety.Booking/Notifications/NotificationWriter.cs`, `src/Gabinety.Booking/Notifications/NotificationDispatcher.cs`, `src/Gabinety.Booking/Persistence/Migrations/T-11.12_NotificationPreferences*.cs`, `tests/Gabinety.Booking.Tests/Notifications/**`
+- Do: 1) Table `notification_preferences` and one migration `T-11.12_NotificationPreferences`. 2) `GET` and `PUT /api/v1/me/notification-preferences` per CONTRACTS 4.2 (a transactional kind in a `PUT` is `400 validation_failed`). 3) The dispatcher skips, and marks as sent without sending, a switchable notification whose recipient switched it off at send time (so a change takes effect for already scheduled rows); nothing else about delivery changes.
+- Accept: with `Reminder24h` off no e-mail is sent for it and the row is closed (test); transactional notifications are sent whatever the table says (test with a forged row); `GET` lists three items, defaulting to enabled.
+- Verify: common verify; the `integration` CI job
+
+### T-11.13 Web: notification preferences on the account page
+- Executor: implementer · Milestone: M3 · Depends: T-11.12, T-11.08
+- Read: `docs/ui/DESIGN-CONTRACT.md` 4.4 of the code repository
+- Files: `src/Gabinety.Web/Components/Pages/Account/Account.razor`, `src/Gabinety.Web/Components/Pages/Account/NotificationPreferencesForm.cs`, `src/Gabinety.Web/Api/Clients.cs`, `src/Gabinety.Web/Text/Pl.cs` (nested `Account`), `tests/Gabinety.Web.Tests/**`
+- Do: 1) A `Powiadomienia e-mail` section: three `.option` checkboxes (`Przypomnienie 24 godziny przed`, `Przypomnienie godzinę przed`, `Prośba o opinię po konsultacji`) and a sentence that confirmations, cancellations, disputes and payouts are always sent. 2) One form post, the flash `Zapisano.`; failure of the backend shows the unavailable callout and leaves the other sections working.
+- Accept: toggling and saving round-trips through the fake Booking; the section fails soft; no other section of `/konto` changes.
+- Verify: common verify
+
+### T-11.14 Booking: `from` and `to` on the bookings list
+- Executor: implementer · Milestone: M3 · Depends: T-11.01
+- Read: CONTRACTS 0 (pagination), 4.2; `src/Gabinety.Booking/Features/Bookings/View/MyBookingsFeature.cs`
+- Files: `src/Gabinety.Booking/Features/Bookings/View/MyBookingsFeature.cs`, `tests/Gabinety.Booking.Tests/View/**`
+- Do: 1) Optional `from` and `to` dates (inclusive, `Europe/Warsaw` days) filtering `start_utc`; `to − from` over 62 days or `to` before `from` is `400 validation_failed`. 2) The order stays newest start first for the cursor; a calendar caller reads all pages. 3) A `tier=integration` test of the filter and the cursor on PostgreSQL.
+- Accept: a booking at 23:30 Warsaw time on `to` is included and one at 00:30 on the next day is not (test across the UTC offset); without the parameters the response is unchanged.
+- Verify: common verify; the `integration` CI job
+
+### T-11.15 Booking: the practitioner's earnings
+- Executor: implementer · Milestone: M3 · Depends: T-11.14
+- Read: CONTRACTS 4.1 (ledger, payouts), 4.2, 9.1; the payout job and ledger feature
+- Files: `src/Gabinety.Booking/Features/Payouts/Earnings*.cs`, `tests/Gabinety.Booking.Tests/Payouts/**`
+- Do: 1) `GET /api/v1/me/earnings` per CONTRACTS 4.2 for a practitioner (`403` otherwise), all sums in `long` grosz from the ledger and payout rows, never from floating point. 2) Unit tests with a fixed `TimeProvider` and a `tier=integration` test of the queries on PostgreSQL.
+- Accept: with one `Sent` payout, one `Pending`, one `Disputed` booking and one fee in range the five figures equal the sums computed by hand in the test; a date range that excludes them returns zeros; another practitioner's rows never count.
+- Verify: common verify; the `integration` CI job
+
+### T-11.16 Web: the practitioner's calendar
+- Executor: implementer · Milestone: M3 · Depends: T-11.14
+- Read: `docs/ui/DESIGN-CONTRACT.md` 5.8, 5.9 of the code repository; `MyBookingsSchedule`
+- Files: `src/Gabinety.Web/Components/Pages/PractitionerArea/Calendar*.razor`, `src/Gabinety.Web/Components/Pages/PractitionerArea/PractitionerLayout.razor` (one tab), `src/Gabinety.Web/Api/PractitionerClients.cs`, `src/Gabinety.Web/Text/PractitionerArea.cs` (nested `Tabs` and a new nested `Calendar`), `tests/Gabinety.Web.Tests/**`
+- Do: 1) `/gabinet-programisty/kalendarz?tydzien=2026-11-23` (the Monday; default this week): seven day columns from 56 rem, a stacked list of days below it; each booking is a card with the time range, offering title, client display name, status badge and a `Szczegóły` link; `Poprzedni tydzień` and `Następny tydzień` links. 2) Reads `GET /api/v1/me/bookings?role=practitioner&from=&to=` and all pages. 3) Only `Confirmed`, `Completed`, `Disputed` and `ClientNoShow` are drawn; a failure is the soft callout with a retry link. 4) Static, no script; `[Authorize]` for an account with a practitioner profile, the forbidden page otherwise.
+- Accept: a host test shows a Monday booking in the Monday column in Warsaw time across the DST change; an empty week shows the empty state; the page is in the UI gate and in `ROUTE-AUTH.md`.
+- Verify: common verify
+
+### T-11.17 Web: earnings on the practitioner dashboard
+- Executor: implementer · Milestone: M3 · Depends: T-11.15, T-11.16
+- Read: `docs/ui/DESIGN-CONTRACT.md` 4.2 of the code repository
+- Files: `src/Gabinety.Web/Components/Pages/PractitionerArea/PractitionerHome.razor`, `src/Gabinety.Web/Components/Pages/PractitionerArea/Earnings*.razor`, `src/Gabinety.Web/Api/PractitionerClients.cs`, `src/Gabinety.Web/Text/PractitionerArea.cs` (nested `Dashboard`), `tests/Gabinety.Web.Tests/**`
+- Do: 1) On the approved dashboard a `Zarobki w tym miesiącu` card: paid out, pending, in dispute, platform fees (money via the existing helper), and a link to the calendar. 2) A month switch by links (`?miesiac=2026-10`). 3) Fails soft: the card shows the unavailable text and the rest of the dashboard stays.
+- Accept: the four figures equal the fake backend's values formatted `1 234,56 zł`; an unavailable Booking leaves the upcoming-consultations region working (test).
+- Verify: common verify
+
+### T-11.18 Web: the help page and the support address
+- Executor: implementer · Milestone: M3 · Depends: T-11.01
+- Read: `docs/ui/DESIGN-CONTRACT.md` 4, 5.10 of the code repository; `docs/operations/GO-LIVE.md`
+- Files: `src/Gabinety.Web/Components/Pages/Static/Help*.razor`, `src/Gabinety.Web/Hosting/WebOptions.cs`, `src/Gabinety.Web/Components/Layout/SiteFooter.razor` (one link), `src/Gabinety.Web/Text/PlPages.cs` (new nested `Help`), `deploy/config-keys.map`, `tests/Gabinety.Web.Tests/**`
+- Do: 1) `/pomoc`: grouped answers as native `<details>` (booking and payment, cancelling and refunds, disputes, reviews, accounts and data, for programmers), written only from facts that already hold in `/cennik`, `/jak-to-dziala` and the terms: no number of its own (money and windows are linked to `/cennik`). 2) `Support:Email` in `WebOptions`: when set, a `mailto:` link and the sentence `Nie znalazłeś odpowiedzi? Napisz do nas.`; when absent, neither. 3) A footer link `Pomoc`. 4) A page meta (`PageMeta`) and an entry in the sitemap.
+- Accept: with and without `Support:Email` the page renders as specified (two host tests); `scripts/check-config-coverage.sh` passes with the new key; the page is in the UI gate.
+- Verify: common verify
+
+### T-11.19 Web: the profile picture from the verified GitHub account
+- Executor: implementer · Milestone: M3 · Depends: T-11.01
+- Read: ADR-0013; `security-review` (user-supplied names, SSRF); `src/Gabinety.Web/Hosting/SecurityHeaders.cs`; `service-api-patterns` (hardened outbound calls)
+- Files: `src/Gabinety.Web/Hosting/AvatarEndpoint.cs`, `src/Gabinety.Web/Hosting/WebHostingExtensions.cs` (one map call and one client registration), `src/Gabinety.Web/Components/Shared/Avatar.razor(.css)`, `src/Gabinety.Web/Components/Pages/Practitioners/PractitionerCard.razor`, `src/Gabinety.Web/Components/Pages/Gabinet/Profile.razor` (the avatar call only), `docs/operations/ROUTE-AUTH.md`, `tests/Gabinety.Web.Tests/**`
+- Do: 1) `GET /avatar/{slug}` exactly as ADR-0013: slug validated as a slug, the login read from the Directory profile (never from the request), only `https://github.com/<login>.png?size=96`, redirects only to `avatars.githubusercontent.com`, 3 s, `image/png` or `image/jpeg`, 200 KB, 24 h cache in memory (failures 10 min), the headers of the ADR; `404` for anything else. 2) `Avatar` gets an optional `Slug` parameter: when given it renders `<img src="/avatar/<slug>" alt="" width height loading="lazy">` over the initials circle, so a missing image leaves the initials visible; the card and the profile pass the slug only when `githubLogin` is present. 3) The CSP stays as it is (`img-src 'self' data:`).
+- Accept: a host test with a fake GitHub handler returns the bytes with the cache headers and a second request does not call the handler; a login that fails the regex, a redirect to another host, an oversized body and a wrong content type are each `404` (four tests); the page without `githubLogin` renders no `<img>`; `SecurityHeaders` tests unchanged.
+- Verify: common verify
+
+### T-11.20 Journeys J8 (reschedule) and J9 (password reset)
+- Executor: implementer · Milestone: M3 · Depends: T-11.06, T-11.07, T-11.10, T-11.11
+- Read: `testing-strategy`, `e2e-acceptance-testing`; `tests/e2e/README.md` of the code repository; the J5 journey as the model
+- Files: `tests/e2e/journeys/j8-*.spec.ts`, `tests/e2e/journeys/j9-*.spec.ts`, `tests/e2e/journeys/support/**`, `tests/e2e/harness/pages-bookings.ts`
+- Do: 1) J8: a client books and pays a slot far enough ahead, opens the detail, `Zmień termin`, picks another time, sees `Termin został zmieniony.` and the new time; the payment line is unchanged; a second attempt shows no entry link. 2) J9: a registered user requests a reset on `/zapomniane-haslo`, reads the token from DevIdentity's `GET /dev/last-reset-token`, sets a new password on `/reset-password`, signs in with it, and the old password is refused. Every locator is a role or a label; no `waitForTimeout`; the clock is moved only through the harness and restored.
+- Accept: both journeys pass three times in a row against a fresh fake profile and run in the `e2e` job; a journey that asserts nothing is not accepted (each ends on an observable state of the product).
+- Verify: `pnpm --dir tests/e2e test`
+
+### T-11.21 Wave 3 checkpoint
+- Executor: supervisor · Milestone: M3 · Depends: T-11.02, T-11.03, T-11.04, T-11.05, T-11.07, T-11.08, T-11.11, T-11.13, T-11.15, T-11.16, T-11.17, T-11.18, T-11.19, T-11.20
+- Read: SUPERVISOR §9; `session-status`
+- Files: `docs/spec/PROGRESS.md`, `README.md`, `docs/ui/UX-PLAN.md` (code repository, status lines only)
+- Do: 1) Re-measure on `main`: build, tests, the `e2e` and `integration` jobs, the UI gate. 2) Update PROGRESS with links and the UX plan status in the same pass. 3) List what is still owner-only: the SMTP secrets of authservice (reset mail), `Support:Email`, and the first real reset mail sent.
+- Accept: every Phase 11 row is `merged` with a link or states why not; the owner-only list is in PROGRESS.
+- Verify: `scripts/check-spec.sh`
+
+---
+
 ## Waves
 
 Which tasks may run at the same time (disjoint `Files:` sets). The supervisor never starts more sub-sessions than
@@ -699,5 +876,6 @@ DECISIONS D-16 allows, whatever this table permits.
 | 8 | T-08.01 → T-08.02 → T-08.03 → T-08.04 → T-08.05 → T-08.06 | backend and web complete (M1 gate follows T-08.06 and T-02.06) |
 | 9 | T-09.01 (owner, early, parallel with anything) ; T-09.02 → T-09.03 ∥ T-09.04 ; T-09.05, T-09.06 (after T-09.01) ; T-09.07 ; T-09.08 | T-08.05 for T-09.02 |
 | 10 | T-10.01, T-10.02, T-10.04, T-10.05 (parallel); T-10.03, T-10.06; then T-10.07 | T-09.08 |
+| 11 | T-11.01 first. Then in parallel: Directory chain T-11.02 → T-11.03 → T-11.04; identity T-11.06 → T-11.07 → T-11.08; reschedule T-11.09 → T-11.10 → T-11.12; T-11.14 → T-11.15; T-11.18; T-11.19. Web follows its backend: T-11.05 (after T-11.02, T-11.03), T-11.11 (after T-11.10), T-11.13 (after T-11.12 and T-11.08), T-11.16 (after T-11.14), T-11.17 (after T-11.15 and T-11.16). Then T-11.20, then T-11.21 | the UX waves 0 to 2 merged (code repository #143) |
 
 Owner actions that should start early because they gate later work: T-00.01, T-00.02, T-09.01 (account lead times), T-02.06 (needs the owner's machine), T-10.02 (a lawyer's calendar).

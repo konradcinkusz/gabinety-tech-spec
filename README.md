@@ -29,7 +29,7 @@ task at a time to **Claude Haiku 5.5** implementer sessions, one pull request pe
 | [`docs/spec/SPEC.md`](docs/spec/SPEC.md) | The system: goals and non-goals, topology, cross-cutting rules, services, timeouts, test doubles, CI, security, assumptions, release gates |
 | [`docs/spec/CONTRACTS.md`](docs/spec/CONTRACTS.md) | Data models, HTTP contracts, state machines, the fee, refund, ranking and slot formulas with test vectors |
 | [`docs/spec/COPILOT-SDK.md`](docs/spec/COPILOT-SDK.md) | `Gabinety.Llm`: how to use the GitHub Copilot SDK properly, ported from [`llm-multi-agent-chess`](https://github.com/konradcinkusz/llm-multi-agent-chess) |
-| [`docs/spec/TASKS.md`](docs/spec/TASKS.md) | 73 tasks in 11 phases (0 to 10), each with files, steps, acceptance proof and a verify command, and the waves that may run in parallel |
+| [`docs/spec/TASKS.md`](docs/spec/TASKS.md) | 95 tasks in 12 phases (0 to 11), each with files, steps, acceptance proof and a verify command, and the waves that may run in parallel |
 | [`docs/spec/SUPERVISOR.md`](docs/spec/SUPERVISOR.md) | The delegation protocol, with the rules for Haiku implementers and for starting and resuming sessions |
 | [`docs/spec/PROGRESS.md`](docs/spec/PROGRESS.md) | Measured state. A "merged" row has a link, a gate has its proof |
 | [`docs/adr/`](docs/adr/) | Eight accepted decisions and the three deviations from the standards |
