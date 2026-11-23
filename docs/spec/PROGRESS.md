@@ -85,27 +85,27 @@ Rules, checked by `scripts/check-spec.sh` where a script can check them:
 | T-10.05 | not-started | | | Runbook, backups and restore |
 | T-10.06 | not-started | | | Ranking changelog |
 | T-10.07 | not-started | | | M3 checkpoint |
-| T-11.01 | not-started | | | Contracts, ADR and decisions for wave 3 (this PR) |
-| T-11.02 | not-started | | | Directory: technologies on the card, price sort |
-| T-11.03 | not-started | | | Directory: next free time stored, exposed, sortable |
-| T-11.04 | not-started | | | Booking: push the next free time |
-| T-11.05 | not-started | | | Web: sort, technologies, next free time on the list |
-| T-11.06 | not-started | | | DevIdentity: forgot, reset, change password |
-| T-11.07 | not-started | | | Web: forgot and reset password pages |
-| T-11.08 | not-started | | | Web: change password on /konto |
-| T-11.09 | not-started | | | Billing: the reschedule rule |
-| T-11.10 | not-started | | | Booking: reschedule endpoint, migration, notification |
-| T-11.11 | not-started | | | Web: reschedule page |
-| T-11.12 | not-started | | | Booking: notification preferences |
-| T-11.13 | not-started | | | Web: notification preferences on /konto |
-| T-11.14 | not-started | | | Booking: from and to on the bookings list |
-| T-11.15 | not-started | | | Booking: earnings endpoint |
-| T-11.16 | not-started | | | Web: practitioner calendar |
-| T-11.17 | not-started | | | Web: earnings on the dashboard |
-| T-11.18 | not-started | | | Web: help page and support address |
-| T-11.19 | not-started | | | Web: GitHub avatar proxy |
-| T-11.20 | not-started | | | Journeys J8 and J9 |
-| T-11.21 | not-started | | | Wave 3 checkpoint |
+| T-11.01 | merged | https://github.com/konradcinkusz/gabinety-tech-spec/pull/20 | 2026-11-22 | Contracts, ADR-0013 and decisions for wave 3 |
+| T-11.02 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/166 | 2026-11-22 | Directory: technologies on the card, price sort |
+| T-11.03 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/174 | 2026-11-22 | Directory: next free time stored, exposed, sortable |
+| T-11.04 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/177 | 2026-11-22 | Booking: pushes the next free time (earliest slot of the 14-day window) |
+| T-11.05 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/179 | 2026-11-22 | Web: sort, technologies, next free time on the list (time shown in Warsaw time, not the visitor's) |
+| T-11.06 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/169 | 2026-11-22 | DevIdentity: forgot, reset, change password; /dev/last-reset-token only with GABINETY_FAKE=1 |
+| T-11.07 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/172 | 2026-11-22 | Web: forgot and reset password pages; the reset page sends `strict-origin` since PR 187 (was `no-referrer`, which made the form post fail the origin guard) |
+| T-11.08 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/178 | 2026-11-22 | Web: change password on /konto; password fields are never echoed back |
+| T-11.09 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/165 | 2026-11-22 | Billing: the reschedule rule |
+| T-11.10 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/175 | 2026-11-22 | Booking: reschedule endpoint, migration (hand-written), Rescheduled notification; practitioner of the booking gets 403, a stranger 404 |
+| T-11.11 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/180 | 2026-11-22 | Web: reschedule page and entry |
+| T-11.12 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/181 | 2026-11-22 | Booking: notification preferences, migration (hand-written), erased with the subject |
+| T-11.13 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/185 | 2026-11-22 | Web: notification preferences on /konto |
+| T-11.14 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/167 | 2026-11-22 | Booking: from and to on the bookings list |
+| T-11.15 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/183 | 2026-11-22 | Booking: earnings endpoint (period rules decided in the PR) |
+| T-11.16 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/184 | 2026-11-22 | Web: practitioner calendar (week view) |
+| T-11.17 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/186 | 2026-11-22 | Web: earnings card on the dashboard, links to the calendar |
+| T-11.18 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/176 | 2026-11-22 | Web: help page and support address |
+| T-11.19 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/168 | 2026-11-22 | Web: GitHub avatar proxy |
+| T-11.20 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/187 | 2026-11-22 | Journeys J8 and J9 (J9 found and fixed the reset-form origin bug); UI gate and audit cover the wave 3 routes |
+| T-11.21 | merged | https://github.com/konradcinkusz/gabinety-tech/pull/187 (last PR of the wave) | 2026-11-22 | Wave 3 checkpoint. Every PR of the wave passed `ci` (build-test, integration, e2e, secret-scan) on its head before merge; the full `integration` and `e2e` jobs were not re-run on `main` after the last merge in this pass |
 
 ## Gates
 
@@ -140,3 +140,11 @@ None of these block work; the director continues around them (DECISIONS log, 202
 - T-09.01: Fly.io organisation and token, payment provider account (sandbox), e-mail provider, bring-your-own-key model account, GitHub OAuth app, domain.
 - T-02.06: a machine with a GitHub Copilot login for the live smoke run; read the current Copilot terms (A-04).
 - T-10.02: a lawyer and an accountant for the legal texts and A-06, A-07, A-13.
+
+## Owner-only items after wave 3 (2026-11-22)
+
+- authservice: set the SMTP secrets so the password-reset mail is really sent (until then the NoOp mail service only logs it).
+- Set `Support:Email` on the web app so the help page shows the contact address (the page works without it).
+- Send one real reset mail and check that the link starts with the site address (`FrontendBaseUrl`, `deploy/fly/authservice.fly.toml`; replace the `<web-public-host>` placeholder with the real host).
+- Not run here: Docker-based integration tests of the hand-written migrations `T-11.03`, `T-11.10`, `T-11.12` ran only in CI; check them again on the first deploy.
+- Known gap: the next free slot on the list is shown in Warsaw time (no client-side local time, `enhance.js` has a size budget).
